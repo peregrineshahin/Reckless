@@ -107,7 +107,11 @@ impl MovePicker {
         if self.stage == Stage::GenerateQuiet {
             self.stage = Stage::Quiet;
             td.board.append_quiet_moves(&mut self.list);
-            self.score_quiet(td, ply);
+            if !td.board.in_check() {
+                self.score_quiet_non_check(td, ply);
+            } else {
+                self.score_quiet_check(td, ply);
+            }
         }
 
         if self.stage == Stage::Quiet {
@@ -119,7 +123,11 @@ impl MovePicker {
                     }
 
                     if NODE::ROOT {
-                        self.score_quiet(td, ply);
+                        if !td.board.in_check() {
+                            self.score_quiet_non_check(td, ply);
+                        } else {
+                            self.score_quiet_check(td, ply);
+                        }
                     }
 
                     return Some(entry.mv);
@@ -178,7 +186,7 @@ impl MovePicker {
         }
     }
 
-    fn score_quiet(&mut self, td: &ThreadData, ply: isize) {
+    fn score_quiet_non_check(&mut self, td: &ThreadData, ply: isize) {
         let threats = td.board.all_threats();
         let side = td.board.side_to_move();
 
@@ -250,7 +258,18 @@ impl MovePicker {
                 - 7584 * threatened[pt].contains(mv.to()) as i32
                 + 6158 * offense[pt].contains(mv.to()) as i32
                 + 5000 * (pt == PieceType::Rook && king_ring_ortho.contains(mv.to())) as i32
-                - 4000 * wall_pawns.contains(mv.from()) as i32;
+                - 4000 * wall_pawns.contains(mv.from()) as i32
+        }
+    }
+
+    fn score_quiet_check(&mut self, td: &ThreadData, ply: isize) {
+        let side = td.board.side_to_move();
+        let threats = td.board.all_threats();
+
+        for entry in self.list.iter_mut() {
+            let mv = entry.mv;
+
+            entry.score = td.quiet_history.get(threats, side, mv) + td.conthist(ply, 1, mv);
         }
     }
 }
