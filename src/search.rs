@@ -756,7 +756,7 @@ fn search<NODE: NodeType>(
                 if !is_decisive(best_score) && best_score < noisy_futility_value {
                     best_score = noisy_futility_value;
                 }
-                break;
+                continue;
             }
 
             // Static Exchange Evaluation Pruning (SEE Pruning)
