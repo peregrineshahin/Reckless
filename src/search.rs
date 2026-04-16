@@ -1302,6 +1302,14 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
 
     td.shared.tt.write(hash, TtDepth::SOME, raw_eval, best_score, bound, best_move, ply, tt_pv, false);
 
+    if !(in_check
+        || best_move.is_noisy()
+        || (bound == Bound::Upper && best_score >= eval)
+        || (bound == Bound::Lower && best_score <= eval))
+    {
+        update_correction_histories(td, 1, best_score - eval, ply);
+    }
+
     debug_assert!(alpha < beta);
     debug_assert!(-Score::INFINITE < best_score && best_score < Score::INFINITE);
 
