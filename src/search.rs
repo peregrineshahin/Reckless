@@ -172,7 +172,7 @@ pub fn start(td: &mut ThreadData, report: Report, thread_count: usize) {
 
                 td.root_moves[td.pv_start..=td.pv_index].sort_by_key(|rm| std::cmp::Reverse(rm.score));
 
-                if report == Report::Full && td.shared.nodes.aggregate() > 10_000_000 {
+                if report == Report::Full && td.shared.nodes.aggregate() > 3_000_000 {
                     td.print_uci_info(depth);
                 }
             }
@@ -186,7 +186,7 @@ pub fn start(td: &mut ThreadData, report: Report, thread_count: usize) {
             && !(is_loss(td.root_moves[0].display_score) && td.shared.status.get() == Status::STOPPED)
             && (td.shared.status.get() == Status::STOPPED
                 || td.pv_index + 1 == td.multi_pv
-                || td.shared.nodes.aggregate() > 10_000_000)
+                || td.shared.nodes.aggregate() > 3_000_000)
         {
             td.print_uci_info(depth);
         }
@@ -425,7 +425,17 @@ fn search<NODE: NodeType>(
         raw_eval = td.nnue.evaluate(&td.board);
         eval = correct_eval(td, raw_eval, correction_value);
 
-        td.shared.tt.write(hash, TtDepth::SOME, raw_eval, Score::NONE, Bound::None, Move::NULL, ply, tt_pv, false);
+        td.shared.tt.write(
+            hash,
+            TtDepth::UNSEARCHED as i32,
+            raw_eval,
+            Score::NONE,
+            Bound::None,
+            Move::NULL,
+            ply,
+            tt_pv,
+            false,
+        );
     }
 
     // Prefer the TT entry to tighten the evaluation when its bound aligns with
@@ -1196,6 +1206,7 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
         best_score = eval;
 
         if is_valid(tt_score)
+            && entry.is_some_and(|e| e.depth >= 0)
             && (!NODE::PV || !is_decisive(tt_score))
             && match tt_bound {
                 Bound::Upper => tt_score < best_score,
@@ -1214,7 +1225,17 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
         }
 
         if entry.is_none() {
-            td.shared.tt.write(hash, TtDepth::SOME, raw_eval, best_score, Bound::Lower, Move::NULL, ply, tt_pv, false);
+            td.shared.tt.write(
+                hash,
+                TtDepth::UNSEARCHED as i32,
+                raw_eval,
+                best_score,
+                Bound::Lower,
+                Move::NULL,
+                ply,
+                tt_pv,
+                false,
+            );
         }
 
         return best_score;
@@ -1300,7 +1321,7 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
 
     let bound = if best_score >= beta { Bound::Lower } else { Bound::Upper };
 
-    td.shared.tt.write(hash, TtDepth::SOME, raw_eval, best_score, bound, best_move, ply, tt_pv, false);
+    td.shared.tt.write(hash, TtDepth::QSEARCH as i32, raw_eval, best_score, bound, best_move, ply, tt_pv, false);
 
     debug_assert!(alpha < beta);
     debug_assert!(-Score::INFINITE < best_score && best_score < Score::INFINITE);

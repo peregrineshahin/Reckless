@@ -77,24 +77,19 @@ pub struct InternalEntry {
     flags: Flags,     // 1 byte
 }
 
-impl InternalEntry {
-    const fn depth(&self) -> i32 {
-        TtDepth::from_tt(self.offset_depth)
-    }
+pub enum TtDepth {
+    QSEARCH = 0,
+    UNSEARCHED = -2,
+    NONE = -3,
 }
 
-pub enum TtDepth {}
-
 impl TtDepth {
-    pub const NONE: i32 = 0;
-    pub const SOME: i32 = -1;
-
-    const fn from_tt(offset_depth: u8) -> i32 {
-        offset_depth as i32 - 1
+    const fn from_tt(tt_depth: u8) -> i32 {
+        (tt_depth as i32) + Self::NONE as i32
     }
 
-    fn to_tt(depth: i32) -> u8 {
-        (depth + 1).clamp(u8::MIN as i32, u8::MAX as i32) as u8
+    const fn to_tt(depth: i32) -> u8 {
+        (depth - TtDepth::NONE as i32) as u8
     }
 }
 
@@ -165,9 +160,9 @@ impl TranspositionTable {
         let key = verification_key(hash);
 
         for entry in &cluster.entries {
-            if key == entry.key && entry.depth() != TtDepth::NONE {
+            if key == entry.key && entry.offset_depth != 0 {
                 let hit = Entry {
-                    depth: entry.depth(),
+                    depth: TtDepth::from_tt(entry.offset_depth),
                     score: score_from_tt(entry.score as i32, ply, halfmove_clock),
                     raw_eval: entry.raw_eval as i32,
                     bound: entry.flags.bound(),
@@ -187,9 +182,6 @@ impl TranspositionTable {
         &self, hash: u64, depth: i32, raw_eval: i32, mut score: i32, bound: Bound, mv: Move, ply: isize, tt_pv: bool,
         force: bool,
     ) {
-        // Used for checking if an entry exists
-        debug_assert!(depth != TtDepth::NONE);
-
         let cluster = {
             let index = index(hash, self.len());
             unsafe { &mut *self.ptr().add(index) }
@@ -202,12 +194,12 @@ impl TranspositionTable {
         let mut lowest_quality = i32::MAX;
 
         for candidate in &mut cluster.entries {
-            if candidate.key == key || candidate.depth() == TtDepth::NONE {
+            if candidate.key == key || candidate.offset_depth == 0 {
                 replacement_slot = Some(candidate);
                 break;
             }
 
-            let quality = candidate.depth() - 4 * candidate.relative_age(tt_age);
+            let quality = candidate.offset_depth as i32 - 8 * candidate.relative_age(tt_age);
             if quality < lowest_quality {
                 replacement_slot = Some(candidate);
                 lowest_quality = quality;
@@ -220,7 +212,11 @@ impl TranspositionTable {
             entry.mv = mv;
         }
 
-        if !force && key == entry.key && depth + 4 + 2 * tt_pv as i32 <= entry.depth() && entry.flags.age() == tt_age {
+        if !force
+            && key == entry.key
+            && TtDepth::to_tt(depth) as i32 + 2 * tt_pv as i32 <= TtDepth::from_tt(entry.offset_depth) as i32 - 1
+            && entry.flags.age() == tt_age
+        {
             return;
         }
 
