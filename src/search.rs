@@ -1092,6 +1092,10 @@ fn search<NODE: NodeType>(
 
     tt_pv |= !NODE::ROOT && bound == Bound::Upper && move_count > 2 && td.stack[ply - 1].tt_pv;
 
+    if !(excluded || NODE::ROOT && td.pv_index > 0) {
+        td.shared.tt.write(hash, depth, raw_eval, best_score, bound, best_move, ply, tt_pv, NODE::PV);
+    }
+
     if !NODE::ROOT && best_score >= beta && !is_decisive(best_score) && !is_decisive(alpha) {
         let weight = depth.min(8);
         best_score = (best_score * weight + beta) / (weight + 1);
@@ -1100,10 +1104,6 @@ fn search<NODE: NodeType>(
     #[cfg(feature = "syzygy")]
     if NODE::PV {
         best_score = best_score.min(max_score);
-    }
-
-    if !(excluded || NODE::ROOT && td.pv_index > 0) {
-        td.shared.tt.write(hash, depth, raw_eval, best_score, bound, best_move, ply, tt_pv, NODE::PV);
     }
 
     if !(in_check
@@ -1300,13 +1300,13 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
         }
     }
 
-    if best_score >= beta && !is_decisive(best_score) && !is_decisive(beta) {
-        best_score = (best_score + beta) / 2;
-    }
-
     let bound = if best_score >= beta { Bound::Lower } else { Bound::Upper };
 
     td.shared.tt.write(hash, TtDepth::SOME, raw_eval, best_score, bound, best_move, ply, tt_pv, false);
+
+    if best_score >= beta && !is_decisive(best_score) && !is_decisive(beta) {
+        best_score = (best_score + beta) / 2;
+    }
 
     debug_assert!(alpha < beta);
     debug_assert!(-Score::INFINITE < best_score && best_score < Score::INFINITE);
