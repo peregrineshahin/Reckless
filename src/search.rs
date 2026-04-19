@@ -516,7 +516,10 @@ fn search<NODE: NodeType>(
         && !tt_move.is_quiet()
         && tt_bound != Bound::Lower
     {
-        return qsearch::<NonPV>(td, alpha, beta, ply);
+        let score = qsearch::<NonPV>(td, alpha, beta, ply);
+        if score <= alpha {
+            return score;
+        }
     }
 
     // Reverse Futility Pruning (RFP)
