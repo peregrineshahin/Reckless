@@ -98,11 +98,8 @@ impl MovePicker {
                 return Some(entry.mv);
             }
 
-            if skip_quiets {
-                self.stage = Stage::BadNoisy;
-            } else {
-                self.stage = Stage::GenerateQuiet;
-            }
+            debug_assert!(!skip_quiets);
+            self.stage = Stage::GenerateQuiet;
         }
 
         if self.stage == Stage::GenerateQuiet {
