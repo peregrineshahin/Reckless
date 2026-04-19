@@ -602,6 +602,7 @@ fn search<NODE: NodeType>(
         && !is_win(beta)
         && if is_valid(tt_score) { tt_score >= probcut_beta && !is_decisive(tt_score) } else { eval >= beta }
         && !tt_move.is_quiet()
+        && tt_bound != Bound::Upper
     {
         let mut move_picker = MovePicker::new_probcut(probcut_beta - eval);
 
