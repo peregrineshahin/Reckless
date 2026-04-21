@@ -597,13 +597,10 @@ fn search<NODE: NodeType>(
 
     // ProbCut
     let mut probcut_beta = beta + 270 - 75 * improving as i32;
+    let probcut_eval = if is_valid(tt_score) && !is_decisive(tt_score) { tt_score } else { eval };
 
-    if cut_node
-        && !is_win(beta)
-        && if is_valid(tt_score) { tt_score >= probcut_beta && !is_decisive(tt_score) } else { eval >= beta }
-        && !tt_move.is_quiet()
-    {
-        let mut move_picker = MovePicker::new_probcut(probcut_beta - eval);
+    if cut_node && !is_win(beta) && probcut_eval >= beta && !tt_move.is_quiet() {
+        let mut move_picker = MovePicker::new_probcut(probcut_beta - probcut_eval);
 
         while let Some(mv) = move_picker.next::<NODE>(td, true, ply) {
             if move_picker.stage() == Stage::BadNoisy {
