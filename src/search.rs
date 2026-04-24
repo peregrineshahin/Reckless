@@ -586,7 +586,8 @@ fn search<NODE: NodeType>(
     }
 
     // ProbCut
-    let mut probcut_beta = beta + 270 - 75 * improving as i32;
+    let mut probcut_beta =
+        beta + 270 - 75 * improving as i32 + 64 * !(td.board.all_threats() & td.board.colors(stm)).is_empty() as i32;
 
     if cut_node
         && !is_win(beta)
