@@ -520,7 +520,7 @@ fn search<NODE: NodeType>(
                     + 560 * correction_value.abs() / 1024
                     - 59 * (td.board.all_threats() & td.board.colors(stm)).is_empty() as i32
                     + 30)
-                    .max(0)
+                    .max(16)
         && !is_loss(beta)
         && !is_win(estimated_score)
     {
