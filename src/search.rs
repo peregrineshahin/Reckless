@@ -1240,8 +1240,20 @@ fn qsearch<NODE: NodeType>(td: &mut ThreadData, mut alpha: i32, beta: i32, ply: 
                 break;
             }
 
+            let is_quiet = mv.is_quiet();
+            let history = if is_quiet {
+                td.quiet_history.get(td.board.all_threats(), stm, mv)
+                    + td.conthist(ply, 1, mv)
+                    + td.conthist(ply, 2, mv)
+            } else {
+                let captured = td.board.type_on(mv.to());
+                td.noisy_history.get(td.board.all_threats(), td.board.moved_piece(mv), mv.to(), captured)
+            };
+
+            let threshold = (alpha - eval) / 8 - correction_value.abs().min(64) - 79 - 32 * history / 1024;
+
             // Static Exchange Evaluation Pruning (SEE Pruning)
-            if is_valid(eval) && !td.board.see(mv, (alpha - eval) / 8 - correction_value.abs().min(64) - 79) {
+            if is_valid(eval) && !td.board.see(mv, threshold) {
                 continue;
             }
         }
