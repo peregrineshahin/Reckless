@@ -523,6 +523,7 @@ fn search<NODE: NodeType>(
                     .max(0)
         && !is_loss(beta)
         && !is_win(estimated_score)
+        && td.stack[ply - 1].tt_move != td.stack[ply - 1].mv
     {
         return beta + (estimated_score - beta) / 3;
     }
