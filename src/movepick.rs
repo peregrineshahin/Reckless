@@ -91,7 +91,7 @@ impl MovePicker {
                     continue;
                 }
 
-                if NODE::ROOT {
+                if ply == 0 || ply == 2 {
                     self.score_noisy(td);
                 }
 
@@ -119,7 +119,7 @@ impl MovePicker {
                         continue;
                     }
 
-                    if NODE::ROOT {
+                    if ply == 0 || ply == 2 {
                         self.score_quiet(td, ply);
                     }
 
