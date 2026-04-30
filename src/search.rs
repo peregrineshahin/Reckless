@@ -344,8 +344,9 @@ fn search<NODE: NodeType>(
             if tt_move.is_quiet() && tt_score >= beta && td.stack[ply - 1].move_count < 4 {
                 let quiet_bonus = (175 * depth - 79).min(1637);
                 let cont_bonus = (114 * depth - 57).min(1284);
+                let is_pawn = td.board.moved_piece(tt_move).piece_type() == PieceType::Pawn;
 
-                td.quiet_history.update(td.board.all_threats(), stm, tt_move, quiet_bonus);
+                td.quiet_history.update(td.board.all_threats(), stm, tt_move, is_pawn, quiet_bonus);
                 update_continuation_histories(td, ply, td.board.moved_piece(tt_move), tt_move.to(), cont_bonus);
             }
 
@@ -453,8 +454,9 @@ fn search<NODE: NodeType>(
     if !NODE::ROOT && !in_check && !excluded && td.stack[ply - 1].mv.is_quiet() && is_valid(td.stack[ply - 1].eval) {
         let value = 824 * (-(eval + td.stack[ply - 1].eval)) / 128;
         let bonus = value.clamp(-133, 348);
+        let is_pawn = td.stack[ply - 1].piece.piece_type() == PieceType::Pawn;
 
-        td.quiet_history.update(td.board.prior_threats(), !stm, td.stack[ply - 1].mv, bonus);
+        td.quiet_history.update(td.board.prior_threats(), !stm, td.stack[ply - 1].mv, is_pawn, bonus);
     }
 
     // Hindsight reductions
@@ -703,7 +705,8 @@ fn search<NODE: NodeType>(
         let is_quiet = mv.is_quiet();
 
         let history = if is_quiet {
-            td.quiet_history.get(td.board.all_threats(), stm, mv) + td.conthist(ply, 1, mv) + td.conthist(ply, 2, mv)
+            let is_pawn = td.board.moved_piece(mv).piece_type() == PieceType::Pawn;
+            td.quiet_history.get(td.board.all_threats(), stm, mv, is_pawn) + td.conthist(ply, 1, mv) + td.conthist(ply, 2, mv)
         } else {
             let captured = td.board.type_on(mv.to());
             td.noisy_history.get(td.board.all_threats(), td.board.moved_piece(mv), mv.to(), captured)
@@ -1017,11 +1020,13 @@ fn search<NODE: NodeType>(
                 noisy_bonus,
             );
         } else {
-            td.quiet_history.update(td.board.all_threats(), stm, best_move, quiet_bonus);
+            let is_pawn = td.board.moved_piece(best_move).piece_type() == PieceType::Pawn;
+            td.quiet_history.update(td.board.all_threats(), stm, best_move, is_pawn, quiet_bonus);
             update_continuation_histories(td, ply, td.board.moved_piece(best_move), best_move.to(), cont_bonus);
 
             for &mv in quiet_moves.iter() {
-                td.quiet_history.update(td.board.all_threats(), stm, mv, -quiet_malus);
+                let is_pawn = td.board.moved_piece(mv).piece_type() == PieceType::Pawn;
+                td.quiet_history.update(td.board.all_threats(), stm, mv, is_pawn, -quiet_malus);
                 update_continuation_histories(td, ply, td.board.moved_piece(mv), mv.to(), -cont_malus);
             }
         }
@@ -1052,8 +1057,9 @@ fn search<NODE: NodeType>(
                 + 321 * (is_valid(td.stack[ply - 1].eval) && best_score <= -td.stack[ply - 1].eval - 128) as i32;
 
             let scaled_bonus = factor * (165 * depth - 35).min(2467) / 128;
+            let is_pawn = td.stack[ply - 1].piece.piece_type() == PieceType::Pawn;
 
-            td.quiet_history.update(td.board.prior_threats(), !stm, prior_move, scaled_bonus);
+            td.quiet_history.update(td.board.prior_threats(), !stm, prior_move, is_pawn, scaled_bonus);
 
             let entry = &td.stack[ply - 2];
             if entry.mv.is_present() {
