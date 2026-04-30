@@ -194,43 +194,87 @@ fn go(threads: &mut ThreadPool, settings: &Settings, board: &Board, shared: &Arc
 
     let mut votes: HashMap<&Move, i32> = HashMap::new();
     for result in threads.iter() {
-        *votes.entry(&result.root_moves[0].mv).or_default() += vote_value(result);
+        if result.root_moves[0].score != -Score::INFINITE {
+            *votes.entry(&result.root_moves[0].mv).or_default() += vote_value(result);
+        }
     }
 
     let mut best = 0;
 
     if !matches!(threads[best].time_manager.limits(), Limits::Depth(_)) && threads[0].multi_pv == 1 {
-        for current in 1..threads.len() {
-            let is_better_candidate = || -> bool {
-                let best = &threads[best];
-                let current = &threads[current];
+        let is_better_candidate = |best: usize, current: usize, votes: &HashMap<&Move, i32>| -> bool {
+            let best_td = &threads[best];
+            let current_td = &threads[current];
 
-                if is_win(best.root_moves[0].score) {
-                    return current.root_moves[0].score > best.root_moves[0].score;
-                }
-
-                if current.root_moves[0].score != -Score::INFINITE
-                    && best.root_moves[0].score != -Score::INFINITE
-                    && is_loss(best.root_moves[0].score)
-                {
-                    return current.root_moves[0].score < best.root_moves[0].score;
-                }
-
-                if current.root_moves[0].score != -Score::INFINITE && is_decisive(current.root_moves[0].score) {
-                    return true;
-                }
-
-                let best_vote = votes[&best.root_moves[0].mv];
-                let current_vote = votes[&current.root_moves[0].mv];
-
-                !is_loss(current.root_moves[0].score)
-                    && (current_vote > best_vote
-                        || (current_vote == best_vote && vote_value(current) > vote_value(best)))
-            };
-
-            if is_better_candidate() {
-                best = current;
+            if current_td.root_moves[0].score == -Score::INFINITE {
+                return false;
             }
+
+            if is_win(best_td.root_moves[0].score) {
+                return current_td.root_moves[0].score > best_td.root_moves[0].score;
+            }
+
+            if current_td.root_moves[0].score != -Score::INFINITE
+                && best_td.root_moves[0].score != -Score::INFINITE
+                && is_loss(best_td.root_moves[0].score)
+            {
+                return current_td.root_moves[0].score < best_td.root_moves[0].score;
+            }
+
+            if is_decisive(current_td.root_moves[0].score) {
+                return true;
+            }
+
+            let best_vote = votes[&best_td.root_moves[0].mv];
+            let current_vote = votes[&current_td.root_moves[0].mv];
+
+            !is_loss(current_td.root_moves[0].score)
+                && (current_vote > best_vote
+                    || (current_vote == best_vote && vote_value(current_td) > vote_value(best_td)))
+        };
+
+        let first_valid = threads.iter().position(|td| td.root_moves[0].score != -Score::INFINITE).unwrap_or(0);
+        best = first_valid;
+        let mut second = first_valid;
+
+        for current in (first_valid + 1)..threads.len() {
+            if threads[current].root_moves[0].score == -Score::INFINITE {
+                continue;
+            }
+            if is_better_candidate(best, current, &votes) {
+                second = best;
+                best = current;
+            } else if is_better_candidate(second, current, &votes) {
+                second = current;
+            }
+        }
+
+        let top2_moves = [threads[best].root_moves[0].mv, threads[second].root_moves[0].mv];
+
+        let min_score2 = threads
+            .iter()
+            .filter_map(|td| td.root_moves.iter().find(|rm| top2_moves.contains(&rm.mv)))
+            .map(|rm| rm.score)
+            .min()
+            .unwrap_or(0);
+        let vote_value2 = |td: &ThreadData| {
+            let rm = td.root_moves.iter().find(|rm| top2_moves.contains(&rm.mv)).unwrap();
+            (rm.score - min_score2 + 10) * td.completed_depth
+        };
+
+        let mut runoff_votes: HashMap<Move, i32> = HashMap::new();
+        for result in threads.iter() {
+            if let Some(preferred) = result.root_moves.iter().find(|rm| top2_moves.contains(&rm.mv)) {
+                if preferred.score != -Score::INFINITE {
+                    *runoff_votes.entry(preferred.mv).or_default() += vote_value2(result);
+                }
+            }
+        }
+
+        let best_votes = runoff_votes.get(&top2_moves[0]).copied().unwrap_or(0);
+        let second_votes = runoff_votes.get(&top2_moves[1]).copied().unwrap_or(0);
+        if second_votes > best_votes {
+            best = second;
         }
     }
 
