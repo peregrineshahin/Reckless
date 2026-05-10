@@ -53,7 +53,7 @@ impl MovePicker {
             self.stage = Stage::GoodNoisy;
             td.board.append_noisy_moves(&mut self.list);
             self.remove_tt();
-            self.score_noisy(td);
+            self.score_noisy::<NODE>(td);
         }
 
         if self.stage == Stage::GoodNoisy {
@@ -66,7 +66,7 @@ impl MovePicker {
                 }
 
                 if NODE::ROOT {
-                    self.score_noisy(td);
+                    self.score_noisy::<NODE>(td);
                 }
 
                 return Some(entry.mv);
@@ -122,16 +122,45 @@ impl MovePicker {
         }
     }
 
-    fn score_noisy(&mut self, td: &ThreadData) {
-        let threats = td.board.all_threats();
+    fn score_noisy<NODE: NodeType>(&mut self, td: &ThreadData) {
+        let stm = td.board.side_to_move();
+        let non_stm_threats = td.board.all_threats();
+
+        let original_occupancies = td.board.occupancies();
 
         for entry in self.list.iter_mut() {
             let mv = entry.mv;
             let captured = td.board.type_on(mv.capture_sq());
             let pt = td.board.type_on(mv.from());
+            let moving_piece = td.board.moved_piece(mv);
+
+            let capture_history = td.noisy_history.get(non_stm_threats, moving_piece, mv.to(), captured);
+
+            let mut occupancies = original_occupancies;
+            occupancies.clear(mv.from());
+            occupancies.clear(mv.to());
+
+            let recapturers = td.board.attackers_to(mv.to(), occupancies) & td.board.colors(!stm);
+
+            let history_score = if NODE::ROOT || recapturers.is_empty() {
+                capture_history
+            } else {
+                let mut best_recapture_history = i32::MIN;
+
+                for sq in recapturers {
+                    best_recapture_history = best_recapture_history.max(td.noisy_history.get(
+                        td.board.prior_threats(),
+                        td.board.piece_on(sq),
+                        mv.to(),
+                        pt,
+                    ));
+                }
+
+                capture_history - best_recapture_history
+            };
 
             entry.score = 16 * captured.value()
-                + td.noisy_history.get(threats, td.board.moved_piece(mv), mv.to(), captured)
+                + history_score
                 + 4000 * (mv.is_promotion() && mv.promo_piece_type() == PieceType::Queen) as i32
                 + (200000 - 20000 * pt as i32) * td.board.in_check() as i32;
         }
