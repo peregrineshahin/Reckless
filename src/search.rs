@@ -772,7 +772,7 @@ fn search<NODE: NodeType>(
             }
 
             // History Pruning (HP)
-            if !in_check && is_quiet && depth < 5 && td.conthist(ply, 1, mv) + td.conthist(ply, 2, mv) < -1024 * depth {
+            if !in_check && is_quiet && depth < 5 && td.conthist(ply, 1, mv) + td.conthist(ply, 2, mv) < -4313 * depth {
                 continue;
             }
 
