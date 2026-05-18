@@ -1065,6 +1065,7 @@ fn search<NODE: NodeType>(
     }
 
     if !NODE::ROOT && bound == Bound::Upper && (cut_node || NODE::PV) {
+        tt_pv |= move_count > 2 && td.stack[ply - 1].tt_pv;
         let prior_move = td.stack[ply - 1].mv;
         if prior_move.is_quiet() {
             let factor = 88
@@ -1095,8 +1096,6 @@ fn search<NODE: NodeType>(
             );
         }
     }
-
-    tt_pv |= !NODE::ROOT && bound == Bound::Upper && move_count > 2 && td.stack[ply - 1].tt_pv;
 
     if !NODE::ROOT && best_score >= beta && !is_decisive(best_score) && !is_decisive(alpha) {
         best_score = lerp(best_score, beta, 0.12);
