@@ -600,16 +600,19 @@ fn search<NODE: NodeType>(
         && if is_valid(tt_score) { tt_score >= probcut_beta && !is_decisive(tt_score) } else { eval >= beta }
         && !tt_move.is_quiet()
     {
+        let mut probcut_move_count = 0;
         let mut move_picker = MovePicker::new(Move::NULL, Some(probcut_beta - eval));
 
         while let Some(mv) = move_picker.next::<NODE>(td, true, ply) {
-            if move_picker.stage() == Stage::BadNoisy {
+            if move_picker.stage() == Stage::BadNoisy || probcut_move_count > depth {
                 break;
             }
 
             if mv == td.stack[ply].excluded {
                 continue;
             }
+
+            probcut_move_count += 1;
 
             make_move(td, ply, mv);
 
