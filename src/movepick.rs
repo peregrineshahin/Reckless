@@ -3,7 +3,7 @@ use crate::{
     search::NodeType,
     setwise::{bishop_attacks_setwise, knight_attacks_setwise, pawn_attacks_setwise, rook_attacks_setwise},
     thread::ThreadData,
-    types::{ArrayVec, Bitboard, MAX_MOVES, Move, MoveEntry, MoveList, PieceType},
+    types::{ArrayVec, Bitboard, Color, MAX_MOVES, Move, MoveEntry, MoveList, PieceType},
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd)]
@@ -141,6 +141,15 @@ impl MovePicker {
     }
 
     fn score_quiet(&mut self, td: &ThreadData, ply: isize) {
+        pub fn pawn_attack_span(pawns: Bitboard, side: Color) -> Bitboard {
+            let shift: i8 = if side == Color::White { 8 } else { -8 };
+            let mut fill = pawns;
+            fill |= fill.shift(shift);
+            fill |= fill.shift(shift * 2);
+            fill |= fill.shift(shift * 4);
+            pawn_attacks_setwise(fill, side)
+        }
+
         let threats = td.board.all_threats();
         let side = td.board.side_to_move();
         let occupancies = td.board.occupancies();
@@ -193,6 +202,10 @@ impl MovePicker {
             Bitboard(0)
         };
 
+        let enemy_pawns = td.board.colored_pieces(!side, PieceType::Pawn);
+        let outpost_squares = Bitboard::OUTPOST_RANKS[side] & !pawn_attack_span(enemy_pawns, !side);
+        let pawn_support = pawn_attacks_setwise(td.board.colored_pieces(side, PieceType::Pawn), side);
+
         for entry in self.list.iter_mut() {
             let mv = entry.mv;
             let pt = td.board.type_on(mv.from());
@@ -206,7 +219,13 @@ impl MovePicker {
                 + 9503 * td.board.checking_squares(pt).contains(mv.to()) as i32
                 - 8074 * threatened[pt].contains(mv.to()) as i32
                 + 5182 * offense[pt].contains(mv.to()) as i32
-                - 4255 * wall_pawns.contains(mv.from()) as i32;
+                - 4255 * wall_pawns.contains(mv.from()) as i32
+                + (outpost_squares.contains(mv.to()) && pawn_support.contains(mv.to())) as i32
+                    * match pt {
+                        PieceType::Knight => 9000,
+                        PieceType::Bishop => 5000,
+                        _ => 0,
+                    };
         }
     }
 }
