@@ -220,12 +220,7 @@ impl MovePicker {
                 - 8074 * threatened[pt].contains(mv.to()) as i32
                 + 5182 * offense[pt].contains(mv.to()) as i32
                 - 4255 * wall_pawns.contains(mv.from()) as i32
-                + (outpost_squares.contains(mv.to()) && pawn_support.contains(mv.to())) as i32
-                    * match pt {
-                        PieceType::Knight => 9000,
-                        PieceType::Bishop => 5000,
-                        _ => 0,
-                    };
+                + 5000 * (pt == PieceType::Knight && (outpost_squares & pawn_support).contains(mv.to())) as i32;
         }
     }
 }
