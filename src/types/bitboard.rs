@@ -18,6 +18,10 @@ impl Bitboard {
     pub const HOME_ROWS: [Bitboard; 2] = [Self::rank(Rank::R1), Self::rank(Rank::R8)];
     pub const CORNERS: Self = Self(0x8100000000000081);
     pub const LEVER_RANKS: [Bitboard; 2] = [Self(0x0000FFFF00000000), Self(0x00000000FFFF0000)];
+    pub const OUTPOST_RANKS: [Bitboard; 2] = [
+        Self(Self::rank(Rank::R4).0 | Self::rank(Rank::R5).0 | Self::rank(Rank::R6).0),
+        Self(Self::rank(Rank::R3).0 | Self::rank(Rank::R4).0 | Self::rank(Rank::R5).0),
+    ];
 
     /// Creates a bitboard with all bits set in the specified rank.
     pub const fn rank(rank: Rank) -> Self {
