@@ -145,16 +145,16 @@ impl MovePicker {
         let side = td.board.side_to_move();
         let occupancies = td.board.occupancies();
         let pawn_threats = td.board.piece_threats(PieceType::Pawn);
+        let bishop_threats = td.board.piece_threats(PieceType::Bishop);
 
         let non_pawn_threats = td.board.piece_threats(PieceType::Knight)
-            | td.board.piece_threats(PieceType::Bishop)
+            | bishop_threats
             | td.board.piece_threats(PieceType::Rook)
             | td.board.piece_threats(PieceType::Queen)
             | td.board.piece_threats(PieceType::King);
 
         let threatened = {
-            let minor_threats =
-                pawn_threats | td.board.piece_threats(PieceType::Knight) | td.board.piece_threats(PieceType::Bishop);
+            let minor_threats = pawn_threats | td.board.piece_threats(PieceType::Knight) | bishop_threats;
             let rook_threats = minor_threats | td.board.piece_threats(PieceType::Rook);
             [Bitboard(0), pawn_threats, pawn_threats, minor_threats, rook_threats, Bitboard(0)]
         };
@@ -193,6 +193,12 @@ impl MovePicker {
             Bitboard(0)
         };
 
+        let interpose_squares = {
+            let major = td.board.colored_pieces2(side, PieceType::Rook, PieceType::Queen);
+            let attacked_major = bishop_threats & major;
+            bishop_attacks_setwise(attacked_major, occupancies) & bishop_threats
+        };
+
         for entry in self.list.iter_mut() {
             let mv = entry.mv;
             let pt = td.board.type_on(mv.from());
@@ -206,7 +212,22 @@ impl MovePicker {
                 + 9503 * td.board.checking_squares(pt).contains(mv.to()) as i32
                 - 8074 * threatened[pt].contains(mv.to()) as i32
                 + 5182 * offense[pt].contains(mv.to()) as i32
-                - 4255 * wall_pawns.contains(mv.from()) as i32;
+                - 4255 * wall_pawns.contains(mv.from()) as i32
+                + 5000
+                    * (interpose_squares.contains(mv.to()) && pt.value() <= PieceType::Bishop.value() && {
+                        let defended = pawn_attacks_setwise(td.board.colored_pieces(side, PieceType::Pawn), side)
+                            | knight_attacks_setwise(td.board.colored_pieces(side, PieceType::Knight))
+                            | bishop_attacks_setwise(
+                                td.board.colored_pieces2(side, PieceType::Bishop, PieceType::Queen),
+                                occupancies ^ mv.from().to_bb(),
+                            )
+                            | rook_attacks_setwise(
+                                td.board.colored_pieces2(side, PieceType::Rook, PieceType::Queen),
+                                occupancies ^ mv.from().to_bb(),
+                            );
+
+                        defended.contains(mv.to())
+                    }) as i32;
         }
     }
 }
