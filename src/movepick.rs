@@ -187,7 +187,7 @@ impl MovePicker {
 
         // don't move king wall pawns
         let my_king = td.board.king_square(side);
-        let wall_pawns = if Bitboard::HOME_ROWS[side].contains(my_king) {
+        let wall_pawns = if td.board.castling().raw() == 0 && Bitboard::HOME_ROWS[side].contains(my_king) {
             king_attacks(my_king) & td.board.pieces(PieceType::Pawn)
         } else {
             Bitboard(0)
