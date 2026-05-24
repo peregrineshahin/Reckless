@@ -3,7 +3,7 @@ use crate::{
     search::NodeType,
     setwise::{bishop_attacks_setwise, knight_attacks_setwise, pawn_attacks_setwise, rook_attacks_setwise},
     thread::ThreadData,
-    types::{ArrayVec, Bitboard, MAX_MOVES, Move, MoveEntry, MoveList, PieceType},
+    types::{ArrayVec, Bitboard, MAX_MOVES, Move, MoveEntry, MoveList, PieceType, Square},
 };
 
 #[derive(Copy, Clone, Eq, PartialEq, PartialOrd)]
@@ -193,6 +193,16 @@ impl MovePicker {
             Bitboard(0)
         };
 
+        let potential_king_walk = ply > 4
+            && !td.board.in_check()
+            && td.board.material() > 2500
+            && [2, 4].iter().all(|&offset| {
+                td.stack[ply - offset].piece.piece_type() == PieceType::King
+                    && (td.stack[ply - offset].mv.to().rank() as i8 - td.stack[ply - offset].mv.from().rank() as i8)
+                        * Square::UP[side]
+                        > 0
+            });
+
         for entry in self.list.iter_mut() {
             let mv = entry.mv;
             let pt = td.board.type_on(mv.from());
@@ -206,7 +216,12 @@ impl MovePicker {
                 + 9503 * td.board.checking_squares(pt).contains(mv.to()) as i32
                 - 8074 * threatened[pt].contains(mv.to()) as i32
                 + 5182 * offense[pt].contains(mv.to()) as i32
-                - 4255 * wall_pawns.contains(mv.from()) as i32;
+                - 4255 * wall_pawns.contains(mv.from()) as i32
+                + 4000
+                    * (potential_king_walk
+                        && pt == PieceType::King
+                        && (mv.to().rank() as i8 - mv.from().rank() as i8) * Square::UP[side] > 0)
+                        as i32
         }
     }
 }
