@@ -206,6 +206,7 @@ impl MovePicker {
                 + 9503 * td.board.checking_squares(pt).contains(mv.to()) as i32
                 - 8074 * threatened[pt].contains(mv.to()) as i32
                 + 5182 * offense[pt].contains(mv.to()) as i32
+                + 5182 * mv.is_castling() as i32
                 - 4255 * wall_pawns.contains(mv.from()) as i32;
         }
     }
