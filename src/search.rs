@@ -995,6 +995,10 @@ fn search<NODE: NodeType>(
                     break;
                 }
 
+                if depth > 2 && depth < 13 && !is_decisive(score) {
+                    depth -= 2;
+                }
+
                 alpha = score;
 
                 if !(NODE::ROOT && td.pv_index > 0) && mv != tt_move {
