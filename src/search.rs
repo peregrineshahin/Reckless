@@ -636,7 +636,7 @@ fn search<NODE: NodeType>(
                 if is_decisive(score) {
                     return score;
                 }
-                return lerp(score, beta, 0.24);
+                return lerp(score, beta, 0.24).min(tt_score);
             }
         }
     }
