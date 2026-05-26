@@ -604,6 +604,18 @@ fn search<NODE: NodeType>(
                 continue;
             }
 
+            let history = {
+                let captured = td.board.type_on(mv.to());
+                td.noisy_history.get(td.board.all_threats(), td.board.moved_piece(mv), mv.to(), captured)
+            };
+
+            // Static Exchange Evaluation Pruning (SEE Pruning)
+            let threshold = (-7 * depth * depth - 31 * depth - 32 * history / 1024 + 16).min(0);
+
+            if !td.board.see(mv, threshold) {
+                continue;
+            }
+
             make_move(td, ply, mv);
 
             let mut score = -qsearch::<NonPV>(td, -probcut_beta, -probcut_beta + 1, ply + 1);
