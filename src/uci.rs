@@ -295,10 +295,12 @@ fn set_option(threads: &mut ThreadPool, settings: &mut Settings, shared: &Arc<Sh
             shared.tt.resize(threads.len(), v.parse().unwrap());
             println!("info string set Hash to {v} MB");
         }
-        ["name", "Threads", "value", v] => {
-            threads.set_count(v.parse().unwrap_or(1));
-            println!("info string set Threads to {}", threads.len());
-        }
+        ["name", "Threads", "value", v] => match threads.set_count(v.parse().unwrap_or(1)) {
+            Some(binding) => {
+                println!("info string Using {} threads with NUMA node thread binding: {}", threads.len(), binding)
+            }
+            None => println!("info string set Threads to {}", threads.len()),
+        },
         ["name", "MoveOverhead", "value", v] => {
             settings.move_overhead = v.parse().unwrap();
             println!("info string set MoveOverhead to {v} ms");

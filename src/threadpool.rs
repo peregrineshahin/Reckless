@@ -37,12 +37,12 @@ impl ThreadPool {
         shared.numa_context.set_thread_count(1);
 
         let workers = make_worker_threads(1);
-        let data = make_thread_data(shared, &workers);
+        let (data, _) = make_thread_data(shared, &workers);
 
         Self { workers, vector: data }
     }
 
-    pub fn set_count(&mut self, threads: usize) {
+    pub fn set_count(&mut self, threads: usize) -> Option<String> {
         let threads = threads.clamp(1, ThreadPool::available_threads());
         let shared = self.vector[0].shared.clone();
 
@@ -52,7 +52,9 @@ impl ThreadPool {
         self.workers = make_worker_threads(threads);
 
         std::mem::drop(self.vector.drain(..));
-        self.vector = make_thread_data(shared, &self.workers);
+        let (data, binding_info) = make_thread_data(shared, &self.workers);
+        self.vector = data;
+        binding_info
     }
 
     pub fn main_thread(&mut self) -> &mut ThreadData {
@@ -73,7 +75,8 @@ impl ThreadPool {
         shared.numa_context.set_thread_count(self.workers.len());
 
         std::mem::drop(self.vector.drain(..));
-        self.vector = make_thread_data(shared, &self.workers);
+        let (data, _) = make_thread_data(shared, &self.workers);
+        self.vector = data;
     }
 
     pub fn execute_searches(
@@ -270,8 +273,8 @@ fn make_worker_threads(num_threads: usize) -> Vec<WorkerThread> {
     std::iter::repeat_with(make_worker_thread).take(num_threads).collect()
 }
 
-fn make_thread_data(shared: Arc<SharedContext>, worker_threads: &[WorkerThread]) -> Vec<ThreadData> {
-    std::thread::scope(|scope| -> Vec<ThreadData> {
+fn make_thread_data(shared: Arc<SharedContext>, worker_threads: &[WorkerThread]) -> (Vec<ThreadData>, Option<String>) {
+    std::thread::scope(|scope| -> (Vec<ThreadData>, Option<String>) {
         let cfg = shared.numa_context.get_numa_config();
         let should_bind = cfg.suggests_binding_threads(worker_threads.len());
         let numa_nodes = cfg.distribute_threads_among_numa_nodes(worker_threads.len());
@@ -306,6 +309,22 @@ fn make_thread_data(shared: Arc<SharedContext>, worker_threads: &[WorkerThread])
             handle.join();
         }
 
-        thread_data
+        let binding_info = if should_bind {
+            let mut counts = vec![0usize; cfg.num_numa_nodes()];
+            for &node in &numa_nodes {
+                counts[node] += 1;
+            }
+            let s = counts
+                .iter()
+                .enumerate()
+                .map(|(n, &count)| format!("{}/{}", count, cfg.node_cpu_count(n)))
+                .collect::<Vec<_>>()
+                .join(":");
+            Some(s)
+        } else {
+            None
+        };
+
+        (thread_data, binding_info)
     })
 }

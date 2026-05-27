@@ -99,6 +99,10 @@ impl NumaConfig {
         self.nodes.len()
     }
 
+    pub fn node_cpu_count(&self, node: NumaIndex) -> usize {
+        self.nodes.get(node).map(|n| n.len()).unwrap_or(0)
+    }
+
     pub const fn requires_memory_replication(&self) -> bool {
         self.nodes.len() > 1
     }
