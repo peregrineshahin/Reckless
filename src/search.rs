@@ -606,6 +606,15 @@ fn search<NODE: NodeType>(
                 continue;
             }
 
+            let history = {
+                let captured = td.board.type_on(mv.to());
+                td.noisy_history.get(td.board.all_threats(), td.board.moved_piece(mv), mv.to(), captured)
+            };
+
+            if history < -3000 {
+                continue;
+            }
+
             make_move(td, ply, mv);
 
             let mut score = -qsearch::<NonPV>(td, -probcut_beta, -probcut_beta + 1, ply + 1);
