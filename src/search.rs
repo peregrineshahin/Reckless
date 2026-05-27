@@ -606,6 +606,10 @@ fn search<NODE: NodeType>(
                 continue;
             }
 
+            if mv == tt_move {
+                continue;
+            }
+
             make_move(td, ply, mv);
 
             let mut score = -qsearch::<NonPV>(td, -probcut_beta, -probcut_beta + 1, ply + 1);
