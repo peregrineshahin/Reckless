@@ -823,7 +823,7 @@ fn search<NODE: NodeType>(
 
             if !tt_pv && cut_node {
                 reduction += 1810;
-                reduction += 2113 * tt_move.is_null() as i32;
+                reduction += 2113 * entry.is_none() as i32;
             }
 
             if !improving {
@@ -894,7 +894,7 @@ fn search<NODE: NodeType>(
 
             if !tt_pv && cut_node {
                 reduction += 1366;
-                reduction += 2045 * tt_move.is_null() as i32;
+                reduction += 2045 * entry.is_none() as i32;
             }
 
             if !improving {
