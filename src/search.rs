@@ -830,7 +830,7 @@ fn search<NODE: NodeType>(
                 reduction += (414 - 238 * improvement / 128).min(1014);
             }
 
-            if is_quiet && !is_decisive(alpha) && move_count > 1 {
+            if is_quiet && !is_decisive(alpha) {
                 reduction += 3 * ((alpha - estimated_score).clamp(-64, 96));
             }
 
@@ -899,6 +899,10 @@ fn search<NODE: NodeType>(
 
             if !improving {
                 reduction += (402 - 232 * improvement / 128).min(1426);
+            }
+
+            if is_quiet && !is_decisive(alpha) {
+                reduction += 3 * ((alpha - estimated_score).clamp(-64, 96));
             }
 
             if td.stack[ply + 1].cutoff_count > 2 {
