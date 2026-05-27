@@ -598,8 +598,13 @@ fn search<NODE: NodeType>(
         let mut move_picker = MovePicker::new(Move::NULL, Some(probcut_beta - eval));
 
         while let Some(mv) = move_picker.next::<NODE>(td, true, ply) {
-            if move_picker.stage() == Stage::BadNoisy {
-                break;
+            let history = {
+                let captured = td.board.type_on(mv.to());
+                td.noisy_history.get(td.board.all_threats(), td.board.moved_piece(mv), mv.to(), captured)
+            };
+
+            if move_picker.stage() == Stage::BadNoisy && history < 10000 {
+                continue;
             }
 
             if mv == td.excluded[ply] {
