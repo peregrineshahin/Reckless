@@ -588,7 +588,7 @@ fn search<NODE: NodeType>(
     }
 
     // ProbCut
-    let mut probcut_beta = beta + 282 - 80 * improving as i32;
+    let mut probcut_beta = beta + 189 - 80 * improving as i32;
 
     if cut_node
         && !is_win(beta)
