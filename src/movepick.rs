@@ -67,9 +67,7 @@ impl MovePicker {
                     continue;
                 }
 
-                if NODE::ROOT {
-                    self.score_noisy(td);
-                }
+                self.score_noisy(td);
 
                 self.noisy_count += 1;
                 return Some(entry.mv);
