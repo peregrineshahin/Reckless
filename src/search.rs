@@ -338,6 +338,8 @@ fn search<NODE: NodeType>(
     let mut tt_pv = NODE::PV;
     let mut tt_was_pv = false;
 
+    let correction_value = eval_correction(td, ply);
+
     // Search early TT cutoff
     if let Some(entry) = &entry {
         tt_depth = entry.depth;
@@ -363,6 +365,16 @@ fn search<NODE: NodeType>(
 
                 td.quiet_history.update(td.board.all_threats(), stm, tt_move, quiet_bonus);
                 update_continuation_histories(td, ply, td.board.moved_piece(tt_move), tt_move.to(), cont_bonus);
+            }
+
+            let eval = correct_eval(td, entry.raw_eval, correction_value);
+
+            if !(in_check
+                || tt_move.is_noisy()
+                || (tt_score <= alpha && tt_score >= eval)
+                || (tt_score >= beta && tt_score <= eval))
+            {
+                update_correction_histories(td, depth / 2 + 1, tt_score - eval, ply);
             }
 
             if td.board.fiftymove_clock() < 90 {
@@ -407,8 +419,6 @@ fn search<NODE: NodeType>(
             }
         }
     }
-
-    let correction_value = eval_correction(td, ply);
 
     let raw_eval;
     let eval;
