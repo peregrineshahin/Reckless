@@ -460,7 +460,7 @@ fn search<NODE: NodeType>(
         && is_valid(td.stack[ply - 1].eval)
         && (depth < 7 || entry.is_none())
     {
-        let value = 880 * (-(eval + td.stack[ply - 1].eval)) / 128;
+        let value = (10 - depth.min(9)) * 100 * (-(eval + td.stack[ply - 1].eval)) / 128;
         let bonus = value.clamp(-133, 361);
 
         td.quiet_history.update(td.board.prior_threats(), !stm, td.stack[ply - 1].mv, bonus);
