@@ -857,6 +857,10 @@ fn search<NODE: NodeType>(
                 reduction += (567 * (margin - 162) / 128).clamp(0, 2045);
             }
 
+            if move_picker.stage() == Stage::BadNoisy && tt_move.is_null() {
+                reduction += 126;
+            }
+
             if !NODE::PV && td.stack[ply - 1].reduction > reduction + 462 {
                 reduction += 126;
             }
