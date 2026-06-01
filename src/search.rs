@@ -691,7 +691,7 @@ fn search<NODE: NodeType>(
             tt_move = Move::NULL;
         }
         // Negative Extensions
-        else if tt_score >= beta || cut_node {
+        else if (tt_score >= beta || cut_node) && !tt_move.is_noisy() {
             extension = -2;
         }
     }
