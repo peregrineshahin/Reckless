@@ -63,11 +63,12 @@ impl Default for NoisyHistory {
 
 pub struct CorrectionHistory {
     // [bucket][side_to_move][key]
-    entries: Box<[[[AtomicI16; Self::SIZE]; 2]; 16]>,
+    entries: Box<[[[AtomicI16; Self::SIZE]; 2]; Self::BUCKETS]>,
 }
 
 impl CorrectionHistory {
     const MAX_HISTORY: i32 = 14605;
+    const BUCKETS: usize = 160;
 
     const SIZE: usize = 65536;
     const MASK: usize = Self::SIZE - 1;

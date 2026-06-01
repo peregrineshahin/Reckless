@@ -3,6 +3,7 @@ use crate::{
         attacks, between, bishop_attacks, cuckoo, cuckoo_a, cuckoo_b, h1, h2, king_attacks, knight_attacks,
         pawn_attacks, ray_pass, rook_attacks,
     },
+    nnue::INPUT_BUCKETS_LAYOUT,
     setwise::{bishop_attacks_setwise, knight_attacks_setwise, pawn_attacks_setwise, rook_attacks_setwise},
     types::{
         Bitboard, Castling, CastlingKind, Color, File, Keys, Move, PAWN_HOME_RANK, PROMO_RANK, Piece, PieceType,
@@ -74,6 +75,11 @@ impl Board {
 
     pub fn fiftymove_clock_bucket(&self) -> usize {
         (self.fiftymove_clock().saturating_sub(8) as usize / 8).min(15)
+    }
+
+    pub fn correction_bucket(&self) -> usize {
+        let king_bucket = INPUT_BUCKETS_LAYOUT[self.king_square(self.side_to_move()) as usize] as usize;
+        self.fiftymove_clock_bucket() + 16 * king_bucket
     }
 
     pub fn hash(&self) -> u64 {
