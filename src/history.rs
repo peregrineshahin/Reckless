@@ -155,8 +155,20 @@ impl ContinuationHistory {
 
 impl Default for ContinuationHistory {
     fn default() -> Self {
-        Self { entries: zeroed_box() }
+        Self { entries: filled_box(-500i16) }
     }
+}
+
+fn filled_box<T>(value: i16) -> Box<T> {
+    let mut boxed = zeroed_box::<T>();
+    unsafe {
+        let ptr = &mut *boxed as *mut T as *mut i16;
+        let count = std::mem::size_of::<T>() / std::mem::size_of::<i16>();
+        for i in 0..count {
+            ptr.add(i).write(value);
+        }
+    }
+    boxed
 }
 
 fn zeroed_box<T>() -> Box<T> {
