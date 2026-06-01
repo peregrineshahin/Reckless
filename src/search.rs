@@ -789,7 +789,7 @@ fn search<NODE: NodeType>(
             let threshold = if is_quiet {
                 (-15 * depth * depth + 52 * depth - 23 * history / 1024 + 25).min(0)
             } else {
-                (-7 * depth * depth - 31 * depth - 32 * history / 1024 + 16).min(0)
+                -7 * depth * depth - 31 * depth - 32 * history / 1024 + 16
             };
 
             if (!in_check || !is_quiet) && !td.board.see(mv, threshold) {
