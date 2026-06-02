@@ -920,7 +920,8 @@ fn search<NODE: NodeType>(
 
             reduction += ((td.nodes() + td.id as u64 * 24) & 127) as i32 - 58;
 
-            let reduced_depth = new_depth - (reduction >= 2757) as i32 - (reduction >= 5670) as i32;
+            let reduced_depth =
+                new_depth - (reduction >= 2757 && new_depth > 1) as i32 - (reduction >= 5670 && new_depth > 2) as i32;
 
             score = -search::<NonPV>(td, -alpha - 1, -alpha, reduced_depth, !cut_node, ply + 1);
             current_search_count += 1;
