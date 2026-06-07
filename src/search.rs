@@ -823,6 +823,8 @@ fn search<NODE: NodeType>(
         let mut new_depth = depth - 1 + if move_count == 1 { extension } else { 0 };
         let mut score = Score::ZERO;
 
+        let mv_manual_score = move_picker.current_manual_score();
+
         // Late Move Reductions (LMR)
         if depth >= 2 && move_count >= 2 {
             let mut reduction = 269 * depth.ilog2() as i32;
@@ -838,6 +840,9 @@ fn search<NODE: NodeType>(
             if is_quiet {
                 reduction += 2171;
                 reduction -= 179 * history / 1024;
+                if history <= 0 {
+                    reduction -= 16 * mv_manual_score / 1024;
+                }
                 reduction += 418 * ((alpha - estimated_score).clamp(-65, 91)) / 128;
             } else {
                 reduction += 1426;
@@ -906,6 +911,9 @@ fn search<NODE: NodeType>(
             if is_quiet {
                 reduction += 1468;
                 reduction -= 118 * history / 1024;
+                if history <= 0 {
+                    reduction -= 16 * mv_manual_score / 1024;
+                }
             } else {
                 reduction += 940;
                 reduction -= 63 * history / 1024;
