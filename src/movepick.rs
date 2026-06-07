@@ -23,6 +23,7 @@ pub struct MovePicker {
     bad_noisy: ArrayVec<Move, MAX_MOVES>,
     bad_noisy_idx: usize,
     noisy_count: usize,
+    current_manual_score: i32,
 }
 
 impl MovePicker {
@@ -35,6 +36,7 @@ impl MovePicker {
             bad_noisy: ArrayVec::new(),
             bad_noisy_idx: 0,
             noisy_count: 0,
+            current_manual_score: 0,
         }
     }
 
@@ -42,7 +44,13 @@ impl MovePicker {
         self.stage
     }
 
+    pub const fn current_manual_score(&self) -> i32 {
+        self.current_manual_score
+    }
+
     pub fn next<NODE: NodeType>(&mut self, td: &ThreadData, skip_quiets: bool, ply: isize) -> Option<Move> {
+        self.current_manual_score = 0;
+
         if self.stage == Stage::HashMove {
             self.stage = Stage::GenerateNoisy;
 
@@ -72,6 +80,7 @@ impl MovePicker {
                 }
 
                 self.noisy_count += 1;
+                self.current_manual_score = 0;
                 return Some(entry.mv);
             }
 
@@ -90,7 +99,9 @@ impl MovePicker {
                 if NODE::ROOT {
                     self.score_quiet(td, ply);
                 }
-                return Some(self.get_best_entry().mv);
+                let entry = self.get_best_entry();
+                self.current_manual_score = entry.manual_score;
+                return Some(entry.mv);
             }
 
             self.stage = Stage::BadNoisy;
@@ -100,6 +111,7 @@ impl MovePicker {
         if self.bad_noisy_idx < self.bad_noisy.len() {
             let mv = self.bad_noisy[self.bad_noisy_idx];
             self.bad_noisy_idx += 1;
+            self.current_manual_score = 0;
             return Some(mv);
         }
 
@@ -197,16 +209,18 @@ impl MovePicker {
             let mv = entry.mv;
             let pt = td.board.type_on(mv.from());
 
+            entry.manual_score = escape[pt] * threatened[pt].contains(mv.from()) as i32
+                + 10723 * td.board.checking_squares(pt).contains(mv.to()) as i32
+                - 8875 * threatened[pt].contains(mv.to()) as i32
+                + 3446 * offense[pt].contains(mv.to()) as i32
+                - 4494 * wall_pawns.contains(mv.from()) as i32;
+
             entry.score = 1763 * td.quiet_history.get(threats, side, mv) / 1024
                 + 1614 * td.conthist(ply, 1, mv) / 1024
                 + 1066 * td.conthist(ply, 2, mv) / 1024
                 + 1086 * td.conthist(ply, 4, mv) / 1024
                 + 1051 * td.conthist(ply, 6, mv) / 1024
-                + escape[pt] * threatened[pt].contains(mv.from()) as i32
-                + 10723 * td.board.checking_squares(pt).contains(mv.to()) as i32
-                - 8875 * threatened[pt].contains(mv.to()) as i32
-                + 3446 * offense[pt].contains(mv.to()) as i32
-                - 4494 * wall_pawns.contains(mv.from()) as i32;
+                + entry.manual_score;
         }
     }
 }
