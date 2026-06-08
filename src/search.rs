@@ -838,6 +838,9 @@ fn search<NODE: NodeType>(
             if is_quiet {
                 reduction += 2171;
                 reduction -= 179 * history / 1024;
+                if !NODE::PV && !cut_node {
+                    reduction -= 256;
+                }
                 reduction += 418 * ((alpha - estimated_score).clamp(-65, 91)) / 128;
             } else {
                 reduction += 1426;
