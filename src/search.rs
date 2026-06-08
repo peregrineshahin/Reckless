@@ -818,6 +818,13 @@ fn search<NODE: NodeType>(
 
         let initial_nodes = td.nodes();
 
+        let manual_score = move_picker.score()
+            - (1763 * td.quiet_history.get(td.board.all_threats(), td.board.side_to_move(), mv) / 1024
+                + 1614 * td.conthist(ply, 1, mv) / 1024
+                + 1066 * td.conthist(ply, 2, mv) / 1024
+                + 1086 * td.conthist(ply, 4, mv) / 1024
+                + 1051 * td.conthist(ply, 6, mv) / 1024);
+
         make_move(td, ply, mv);
 
         let mut new_depth = depth - 1 + if move_count == 1 { extension } else { 0 };
@@ -838,6 +845,7 @@ fn search<NODE: NodeType>(
             if is_quiet {
                 reduction += 2171;
                 reduction -= 179 * history / 1024;
+                reduction -= 16 * manual_score / 1024;
                 reduction += 418 * ((alpha - estimated_score).clamp(-65, 91)) / 128;
             } else {
                 reduction += 1426;
@@ -906,6 +914,7 @@ fn search<NODE: NodeType>(
             if is_quiet {
                 reduction += 1468;
                 reduction -= 118 * history / 1024;
+                reduction -= 16 * manual_score / 1024;
             } else {
                 reduction += 940;
                 reduction -= 63 * history / 1024;
