@@ -23,6 +23,7 @@ pub struct MovePicker {
     bad_noisy: ArrayVec<Move, MAX_MOVES>,
     bad_noisy_idx: usize,
     noisy_count: usize,
+    score: i32,
 }
 
 impl MovePicker {
@@ -35,11 +36,16 @@ impl MovePicker {
             bad_noisy: ArrayVec::new(),
             bad_noisy_idx: 0,
             noisy_count: 0,
+            score: 0,
         }
     }
 
     pub const fn stage(&self) -> Stage {
         self.stage
+    }
+
+    pub const fn score(&self) -> i32 {
+        self.score
     }
 
     pub fn next<NODE: NodeType>(&mut self, td: &ThreadData, skip_quiets: bool, ply: isize) -> Option<Move> {
@@ -72,6 +78,7 @@ impl MovePicker {
                 }
 
                 self.noisy_count += 1;
+                self.score = 0;
                 return Some(entry.mv);
             }
 
@@ -90,7 +97,9 @@ impl MovePicker {
                 if NODE::ROOT {
                     self.score_quiet(td, ply);
                 }
-                return Some(self.get_best_entry().mv);
+                let entry = self.get_best_entry();
+                self.score = entry.score;
+                return Some(entry.mv);
             }
 
             self.stage = Stage::BadNoisy;
@@ -100,6 +109,7 @@ impl MovePicker {
         if self.bad_noisy_idx < self.bad_noisy.len() {
             let mv = self.bad_noisy[self.bad_noisy_idx];
             self.bad_noisy_idx += 1;
+            self.score = 0;
             return Some(mv);
         }
 
